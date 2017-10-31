@@ -4,7 +4,7 @@
 #include"leptjson.h"
 
 
-static int main_ret = 0;
+static int main_ret = 0; 
 static int test_count = 0;
 static int test_pass = 0;
 #define EXPECT_EQ_BASE(equality,expect, actual, format)\
@@ -20,6 +20,16 @@ static int test_pass = 0;
 
 
 #define EXPECT_EQ_INT(expect, actual) EXPECT_EQ_BASE((expect) == (actual), expect, actual, "%d")
+
+#define TEST_ERROR(error, json)\
+	do {\
+		lept_value v; \
+		EXPECT_EQ_INT(error, lept_parse(v, json)); \
+		EXPECT_EQ_INT(lept_type::LNULL, lept_get_type(v)); \
+	}while(0)
+
+
+
 
 static void test_parse_null()
 {
@@ -47,12 +57,34 @@ static void test_parse_false()
 
 }
 
+static void test_parse_except_value()
+{
+	TEST_ERROR(LEPT_PARSE_EXECPT_VALUE, "");
+}
+
+
+static void test_parse_invalid_value()
+{
+	TEST_ERROR(LEPT_PARSE_INVALID_VALUE, "tr");
+}
+
+static void test_parse_root_not_singular()
+{
+	TEST_ERROR(LEPT_PARSE_ROOT_NOT_SINGULAR, "true s");
+}
+
+
+
 
 static void test_parse()
 {
 	test_parse_null();
 	test_parse_true();
 	test_parse_false();
+
+	test_parse_except_value();
+	test_parse_invalid_value();
+	test_parse_root_not_singular();
 }
 
 int main()
