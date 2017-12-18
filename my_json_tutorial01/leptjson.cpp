@@ -1,110 +1,57 @@
-#include<cassert>
+#ifndef LEPTJSON_H__
+#define LEPTJSON_H__
 
 
-#include"leptjson.h"
+enum class lept_type { LNULL, FALSE, TRUE, NUMBER, STRING, ARRAY, OBJECT }; //JSON_ALL_TYPES
 
 
-#define EXPECT(c, ch)  do { assert(*c.json == (ch)); c.json++; } while(0) //如果第一个字母不是'n' 说明是参数问题....直接令程序崩溃 
-
-struct lept_context
+struct lept_value
 {
-	const char* json; //底层 指针
+	union {
+		struct { char *s; size_t len; };
+		double n;//json number
+	};
+	lept_type type;
+
 };
 
-static void lept_parse_whitespace(lept_context &c)
+
+enum
 {
-	const char*p = c.json;
-	while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')
-		p++;
-	c.json = p;
-}
+	LEPT_PARSE_OK = 0,				//parse ok
+	LEPT_PARSE_EXECPT_VALUE,		//若一个 JSON 只含有空白
+	LEPT_PARSE_INVALID_VALUE,			//既不是空白 也不是含有其它字符
+	LEPT_PARSE_ROOT_NOT_SINGULAR,	// 若一个值之后，在空白之后还有其他字符
+	LEPT_PARSE_NUMBER_TOO_BIG,	//数字太大了
+	LEPT_PARSE_MISS_QUOTATION_MARK, //引号问题
+};
+
+// is json right? 
+int lept_parse(lept_value &v, const char *json);
+
+
+//parse lept_value is what lept_type
+lept_type lept_get_type(const lept_value &v);
+
+double lept_get_number(const lept_value &v);
+
+//获得lept.string
+char *lept_get_string(const lept_value &v);
+
+//获得lept.string_length
+int lept_get_string_length(const lept_value &v);
 
 
 
-static int lept_parse_null(lept_context&c, lept_value &v)
-{
-	EXPECT(c, 'n');
-	if (c.json[0] != 'u' || c.json[1] != 'l' || c.json[2] != 'l')
-		return LEPT_PARSE_INVALID_VALUE;
-	c.json += 3;	//已经结束了对"null"的parse
 
-	/*
-	lept_parse_whitespace(c);	//JSON-text =  ws value ws   这里处理value后面的ws
-	if (c.json[0])
-		return LEPT_PARSE_ROOT_NOT_SINGULAR;
-	*/
+#include<cstring>
+#include<cassert>
 
-	v.type = lept_type::LNULL;
-	return LEPT_PARSE_OK;
-	
-}
+void lept_set_string(lept_value &v, const char* s, size_t len);
 
-static int lept_parse_true(lept_context &c, lept_value &v)
-{
-	EXPECT(c, 't');
-	if (c.json[0] != 'r' || c.json[1] != 'u' || c.json[2] != 'e')
-		return LEPT_PARSE_INVALID_VALUE;
-	c.json += 3;
-	/*lept_parse_whitespace(c);
-	if (c.json[0])
-		return LEPT_PARSE_INVALID_VALUE;*/
-	
-	v.type = lept_type::TRUE;
-	return LEPT_PARSE_OK;	
-}
+void lept_free(lept_value &v);
 
-static int lept_parse_false(lept_context &c, lept_value &v)
-{
-	EXPECT(c, 'f');
-	if (c.json[0] != 'a' || c.json[1] != 'l' || c.json[2] != 's' || c.json[3] != 'e')
-		return LEPT_PARSE_INVALID_VALUE;
-	c.json += 4;
-
-	/*lept_parse_whitespace(c);
-	if (c.json[0])
-		return LEPT_PARSE_ROOT_NOT_SINGULAR;*/
-	v.type = lept_type::FALSE;
-
-	return LEPT_PARSE_OK;
-}
-
-static int lept_parse_value(lept_context &c, lept_value& v)
-{
-	switch (*(&c)->json)  // *(&c)->json 取的是jason第一个字符的内容
-	{
-	case'n':return lept_parse_null(c, v);
-	case't':return lept_parse_true(c, v);
-	case'f':return lept_parse_false(c, v);
+#define lept_init(v) do{ v.type = lept_type::LNULL; }while(0)
 
 
-	case'\0':return LEPT_PARSE_EXECPT_VALUE;	
-	default:return LEPT_PARSE_INVALID_VALUE;
-	}
-
-}
-
-//////////////////////////////////////////////////////////////
-int  lept_parse(lept_value &v, const char *json)
-{
-	lept_context c;
-
-	int ret;
-
-	assert(&v != NULL);
-	c.json = json;
-	//v.type = lept_type::LNULL;
-	lept_parse_whitespace(c);
-	if (ret = lept_parse_value(c, v) == LEPT_PARSE_OK)
-	{
-		lept_parse_whitespace(c);
-		if (c.json[0] != '\0')
-			ret = LEPT_PARSE_ROOT_NOT_SINGULAR;
-	}
-	return ret;
-
-}
-
-lept_type lept_get_type(const lept_value& v) {
-	assert(&v != NULL);
-	return v.type;
-}
+#endif // !LEPTJSON_H__
